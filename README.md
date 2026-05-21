@@ -1,12 +1,8 @@
-# Adversarial Imitation Learning with Policy-Reward Co-Pretraining (CoPT-AIL)
+# Provably Efficient Policy-Reward Co-Pretraining for Adversarial Imitation  Learning
 
 Chinese documentation: `README.zh-CN.md`
 
-This repository contains a Hydra-based implementation of adversarial imitation learning on DeepMind Control tasks, including:
-
-- **BC pretraining** (`agent=bc`) for offline policy initialization.
-- **AIL / DAC baselines** (`agent=ail`, `agent=dac`) for online imitation.
-- **FOIL off-to-on training** (`agent=foil`) that starts from pretrained BC and finetunes online.
+This repository provides the author's official implementation of ICML 2026 paper "Provably Efficient Policy-Reward Co-Pretraining for Adversarial Imitation Learning".
 
 ## Project layout
 
@@ -83,13 +79,13 @@ For example:
 
 ## Quick start
 
-### 1) BC pretraining (single task)
+### Step 1: BC pretraining (single task)
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python pretrain.py env=finger_spin agent=bc expert.demos=50 env.learn_steps=1e5 seed=2
 ```
 
-### 2) Off-to-on CoPT-AIL / FOIL (single task)
+### Step 2: Off-to-on CoPT-AIL / FOIL (single task)
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python off2on.py env=finger_spin agent=foil expert.demos=50 method=il seed=2 agent.bc_transit=false project.name=run_off2on
@@ -97,24 +93,10 @@ CUDA_VISIBLE_DEVICES=0 python off2on.py env=finger_spin agent=foil expert.demos=
 
 `off2on.py` automatically loads the BC checkpoint from `model_folder`.
 
-### 3) AIL baseline (from scratch)
-
-```bash
-CUDA_VISIBLE_DEVICES=0 python train.py env=finger_spin agent=ail expert.demos=50 method=il method.lambda_gp=10 seed=2 project.name=run
-```
-
-### 4) AIL baseline (with pretrained actor)
-
-```bash
-CUDA_VISIBLE_DEVICES=0 python train.py env=finger_spin agent=ail expert.demos=50 method=il method.lambda_gp=10 seed=2 pretrain=/abs/path/CoPT-AIL/pretrain/dmc_finger_spin_10_bc
-```
-
 ## Batch scripts
 
 - `scripts/pretrain_all.sh`: BC pretraining for 8 DMC tasks.
 - `scripts/run_all_off2on.sh`: FOIL off-to-on runs across tasks.
-- `scripts/run_all_ail.sh`: AIL runs from scratch across tasks.
-- `scripts/run_all_pre_ail.sh`: AIL off-to-on style runs (with `off2on.py`).
 
 These scripts assume:
 
@@ -134,10 +116,17 @@ Edit GPU ids, seeds, and demo counts before running.
   - `seed=<int>`
   - `wandb=true`
 
-## Known pitfalls
 
-- This snapshot references `utils/` and `wrappers/` modules (for logging, evaluation, frame wrappers, and action normalization), but those directories are not included in the current tree. Make sure they are available in your runtime environment.
-- `conf/config.yaml` currently defaults to `agent: mb_ail`, which is not present in `conf/agent/`; pass a valid agent override in every run command.
-- `experts/` and `pretrain/` are empty placeholders; create and populate them before training.
-- `train.py` / `off2on.py` do not save periodic checkpoints by default.
+### Bibtex
+
+If you find this code is helpful, please cite our paper in the following format.
+
+```
+@inproceedings{xu2026provably,
+title={Provably Efficient Policy-Reward Co-Pretraining for Adversarial Imitation Learning},
+author={Tian Xu and Zexuan Chen and Zhilong Zhang and Yi-Chen Li and Yang Yu},
+booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
+year={2026},
+}
+```
 
