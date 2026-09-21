@@ -27,7 +27,7 @@ def make_dmc(cfg):
     
     if cfg.env.from_pixels:
         # Set env variables for Mujoco rendering
-        os.environ["MUJOCO_GL"] = "osmesa"
+        os.environ.setdefault("MUJOCO_GL", "glfw" if os.name == "nt" else "osmesa")
 
         # per dreamer: https://github.com/danijar/dreamer/blob/02f0210f5991c7710826ca7881f19c64a012290c/wrappers.py#L26
         camera_id = 2 if domain_name == 'quadruped' else 0
@@ -79,7 +79,7 @@ def make_env(args, monitor=True):
         env = gym.make(args.env.name)
     
     if monitor:
-        env = Monitor(env, "gym")
+        env = Monitor(env, None)
 
     if is_atari(args.env.name):
         env = make_atari(env)

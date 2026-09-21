@@ -35,8 +35,8 @@ class FOIL(object):
         reward_scale = 1 / action_dim
         self.discriminator = ShapedStdDiscriminator(obs_dim, action_dim, 50, 1024, scale=reward_scale).to(self.device)
 
-        self.critic = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args).to(self.device)
-        self.critic_target = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args).to(self.device)
+        self.critic = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args, _recursive_=False).to(self.device)
+        self.critic_target = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args, _recursive_=False).to(self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor = ActorStd(obs_dim, action_dim, 50, 1024).to(self.device)
@@ -92,6 +92,13 @@ class FOIL(object):
             self.actor_bc.load_state_dict(state)
         if disc:
             self.discriminator.load_state_dict(state)
+
+    def save(self, path, suffix=""):
+        """Save final network weights, using the same layout as the AIL agent."""
+        os.makedirs(path, exist_ok=True)
+        for name, network in (("actor", self.actor), ("critic", self.critic),
+                              ("disc", self.discriminator)):
+            torch.save(network.state_dict(), os.path.join(path, f"{self.name}{suffix}_{name}"))
 
     def choose_action(self, state, sample=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)

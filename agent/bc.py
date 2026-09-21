@@ -66,7 +66,7 @@ class BC(object):
 
         losses['mse'] = mse.item()
         losses['nll'] = nll.item()
-        losses['pre_mse'] = mse.item()
+        losses['pre_mse'] = pre_mse.item()
         
         if step % 100 == 0:
             logger.log_train(losses)
@@ -75,7 +75,8 @@ class BC(object):
 
     # Save model parameters
     def save(self, path, suffix=""):
-        actor_path = f"{path}{suffix}_bc"
+        os.makedirs(path, exist_ok=True)
+        actor_path = os.path.join(path, f"{suffix}_bc")
         torch.save(self.actor.state_dict(), actor_path)
         print(f'saved actor model to {actor_path}')
 
