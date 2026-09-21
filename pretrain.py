@@ -5,16 +5,14 @@ from collections import deque
 from itertools import count
 
 from utils.easylogger import logger
-from utils.wandb import WandbLoggerHandler
 
 os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'
-os.environ['MUJOCO_GL'] = 'osmesa'
+os.environ.setdefault('MUJOCO_GL', 'glfw' if os.name == 'nt' else 'osmesa')
 
 import hydra
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
-from tensorboardX import SummaryWriter
 
 from make_envs import make_env
 from dataset.memory import Memory
@@ -25,13 +23,15 @@ torch.set_num_threads(2)
 
 
 def get_args(cfg: DictConfig):
-    cfg.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    if cfg.device == "auto":
+        cfg.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    cfg.model_folder = hydra.utils.to_absolute_path(cfg.model_folder)
     cfg.hydra_base_dir = os.getcwd()
     print(OmegaConf.to_yaml(cfg))
     return cfg
 
 
-@hydra.main(config_path="conf", config_name="config")
+@hydra.main(version_base="1.3", config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     args = get_args(cfg)
     # set seeds
@@ -66,6 +66,7 @@ def main(cfg: DictConfig):
     online_memory_replay = None
 
     if args.wandb:
+        from utils.wandb import WandbLoggerHandler
         logger.add_handler(WandbLoggerHandler(cfg))
 
     # track mean reward and scores
@@ -81,7 +82,7 @@ def main(cfg: DictConfig):
 
             # evaluate
             if learn_steps % args.env.eval_interval == 0:
-                eval_returns, eval_timesteps = evaluate(agent, eval_env, num_episodes=args.eval.eps)
+                eval_returns, eval_timesteps, _ = evaluate(agent, eval_env, num_episodes=args.eval.eps)
                 returns = np.mean(eval_returns)
                 logger.logkv('eval/episode_reward', returns)
                 logger.logkv('eval/episode', epoch)
@@ -93,7 +94,7 @@ def main(cfg: DictConfig):
                 agent.update(online_memory_replay, expert_memory_replay, logger, learn_steps)
             learn_steps += 1
 
-            if learn_steps > args.env.learn_steps:
+            if learn_steps >= args.env.learn_steps:
                 break
 
         rewards_window.append(episode_reward)
@@ -102,10 +103,12 @@ def main(cfg: DictConfig):
         logger.logkv('train/duration', time.time() - start_time)
         logger.dump(learn_steps)
 
-        if learn_steps > args.env.learn_steps:
+        if learn_steps >= args.env.learn_steps:
             break
 
     agent.save(args.model_folder, args.env.name + "_10")
+    env.close()
+    eval_env.close()
 
 if __name__ == "__main__":
     main()

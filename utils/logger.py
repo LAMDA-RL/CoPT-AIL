@@ -65,17 +65,6 @@ AGENT_TRAIN_FORMAT = {
         ('actor_entropy', 'AENT', 'float'),
         ('gradient_penalty', 'GP', 'float')
     ],
-    'mb_ail': [
-        ('actor_loss', 'ALOSS', 'float'),
-        ('critic_loss', 'CLOSS', 'float'),
-        ('discriminator_loss', 'DLOSS', 'float'),
-        ('dynamics_loss', 'DYLOSS', 'float'),
-        ('dynamics_holdout_loss', 'HLOSS', 'float'),
-        ('alpha_loss', 'TLOSS', 'float'),
-        ('alpha_value', 'TVAL', 'float'),
-        ('actor_entropy', 'AENT', 'float'),
-        ('gradient_penalty', 'GP', 'float')
-    ],
     'mbpo': [
         ('actor_loss', 'ALOSS', 'float'),
         ('critic_loss', 'CLOSS', 'float'),

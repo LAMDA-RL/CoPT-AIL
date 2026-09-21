@@ -7,35 +7,34 @@ from itertools import count
 import types
 
 from utils.easylogger import logger
-from utils.wandb import WandbLoggerHandler
 
 os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'
-os.environ['MUJOCO_GL'] = 'osmesa'
+os.environ.setdefault('MUJOCO_GL', 'glfw' if os.name == 'nt' else 'osmesa')
 
 import hydra
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
-from tensorboardX import SummaryWriter
 
 from wrappers.atari_wrapper import LazyFrames
 from make_envs import make_env
 from dataset.memory import Memory
 from agent import make_agent
 from utils.utils import eval_mode, evaluate
-from utils.logger import Logger
 
 torch.set_num_threads(2)
 
 
 def get_args(cfg: DictConfig):
-    cfg.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    if cfg.device == "auto":
+        cfg.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    cfg.model_folder = hydra.utils.to_absolute_path(cfg.model_folder)
     cfg.hydra_base_dir = os.getcwd()
     print(OmegaConf.to_yaml(cfg))
     return cfg
 
 
-@hydra.main(config_path="conf", config_name="config")
+@hydra.main(version_base="1.3", config_path="conf", config_name="config")
 def main(cfg: DictConfig):
     args = get_args(cfg)
     # set seeds
@@ -80,6 +79,7 @@ def main(cfg: DictConfig):
     online_memory_replay = Memory(REPLAY_MEMORY // 2, args.seed + 1)
 
     if args.wandb:
+        from utils.wandb import WandbLoggerHandler
         logger.add_handler(WandbLoggerHandler(cfg))
 
     steps = 0
@@ -106,13 +106,13 @@ def main(cfg: DictConfig):
                 with eval_mode(agent):
                     action = agent.choose_action(state, sample=True)
 
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
             episode_reward += reward
             steps += 1
 
             # evaluate
             if steps % args.env.eval_interval == 0:
-                eval_returns, eval_timesteps = evaluate(agent, eval_env, num_episodes=args.eval.eps)
+                eval_returns, eval_timesteps, _ = evaluate(agent, eval_env, num_episodes=args.eval.eps)
                 returns = np.mean(eval_returns)
                 logger.logkv('eval/episode_reward', returns)
                 logger.logkv('eval/episode', epoch)
@@ -121,9 +121,7 @@ def main(cfg: DictConfig):
 
 
             # only store done true when episode finishes without hitting timelimit (allow infinite bootstrap)
-            done_no_lim = done
-            if str(env.__class__.__name__).find('TimeLimit') >= 0 and episode_step + 1 == env._max_episode_steps:
-                done_no_lim = 0
+            done_no_lim = done and not info.get('TimeLimit.truncated', False)
             online_memory_replay.add((state, next_state, action, reward, done_no_lim))
 
             # Start learning
@@ -133,6 +131,11 @@ def main(cfg: DictConfig):
                     begin_learn = True
 
                 if learn_steps == LEARN_STEPS:
+                    os.makedirs('checkpoints', exist_ok=True)
+                    agent.save('checkpoints', f'_{args.env.name}')
+                    logger.dump(steps)
+                    env.close()
+                    eval_env.close()
                     print('Finished!')
                     return
 

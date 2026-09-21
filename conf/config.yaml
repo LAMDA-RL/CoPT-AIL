@@ -4,7 +4,7 @@ project:
   name: test
 
 cuda_deterministic: False
-device: ??? # to be specified later
+device: auto # auto, cpu, or cuda:0
 
 gamma: 0.99
 seed: 0
@@ -58,9 +58,14 @@ num_actor_updates: 1
 
 wandb: False
 
-model_folder: /path/to/pretrain
+model_folder: pretrain
 
 defaults:
+  - _self_
   - method: il
-  - agent: mb_ail
+  - agent: ail
   - env: finger_spin
+
+hydra:
+  job:
+    chdir: true

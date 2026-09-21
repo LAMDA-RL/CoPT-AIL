@@ -1,12 +1,12 @@
 import os
 import pickle
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 import numpy as np
-from torchvision.utils import make_grid, save_image
-
-from dataset.memory import Memory
+if TYPE_CHECKING:
+    from dataset.memory import Memory
 
 
 class eval_mode(object):
@@ -95,6 +95,7 @@ def get_concat_samples(policy_batch, expert_batch):
 
 def save_state(tensor, path, num_states=5):
     """Show stack framed of images consisting the state"""
+    from torchvision.utils import save_image
 
     tensor = tensor[:num_states]
     B, C, H, W = tensor.shape
@@ -153,7 +154,7 @@ class LinearSchedule:
         return self.init_value + fraction * (self.final_value - self.init_value)
 
 
-def save_memory(memory: Memory, path: str):
+def save_memory(memory: "Memory", path: str):
     """
     保存 online_memory_replay 到指定路径（使用 pickle）
     
@@ -175,7 +176,7 @@ def save_memory(memory: Memory, path: str):
     print(f'--> Online memory saved to {path}, size: {memory.size()}')
 
 
-def load_memory(memory: Memory, path: str):
+def load_memory(memory: "Memory", path: str):
     """
     从指定路径加载数据到 online_memory_replay（使用 pickle）
     

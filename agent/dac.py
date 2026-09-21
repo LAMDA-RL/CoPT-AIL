@@ -25,10 +25,10 @@ class DAC(object):
         self.actor_update_frequency = agent_cfg.actor_update_frequency
         self.critic_target_update_frequency = agent_cfg.critic_target_update_frequency
 
-        self.discriminator = hydra.utils.instantiate(agent_cfg.disc_cfg, args=args).to(self.device)
+        self.discriminator = hydra.utils.instantiate(agent_cfg.disc_cfg, args=args, _recursive_=False).to(self.device)
 
-        self.critic = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args).to(self.device)
-        self.critic_target = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args).to(self.device)
+        self.critic = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args, _recursive_=False).to(self.device)
+        self.critic_target = hydra.utils.instantiate(agent_cfg.critic_cfg, args=args, _recursive_=False).to(self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor = hydra.utils.instantiate(agent_cfg.actor_cfg).to(self.device)
@@ -113,8 +113,7 @@ class DAC(object):
                 hard_update(self.critic_net, self.critic_target_net)
         
         if step % 100 == 0:
-            for k, v in losses.items():
-                logger.log('train/' + k, v, step)
+            logger.log_train(losses)
 
         return losses
 
@@ -207,9 +206,10 @@ class DAC(object):
 
     # Save model parameters
     def save(self, path, suffix=""):
-        actor_path = f"{path}{suffix}_actor"
-        critic_path = f"{path}{suffix}_critic"
-        disc_path = f"{path}{suffix}_discriminator"
+        os.makedirs(path, exist_ok=True)
+        actor_path = os.path.join(path, f"{self.args.agent.name}{suffix}_actor")
+        critic_path = os.path.join(path, f"{self.args.agent.name}{suffix}_critic")
+        disc_path = os.path.join(path, f"{self.args.agent.name}{suffix}_discriminator")
 
         # print('Saving models to {} and {}'.format(actor_path, critic_path))
         torch.save(self.discriminator.state_dict(), disc_path)
